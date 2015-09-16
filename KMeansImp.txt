@@ -1,0 +1,196 @@
+KMeansImp <- function(k) {
+  
+  #Validation
+  if(k<1){
+    return('Please Enter K greater than 1')
+  }
+  
+  #Read the data from system
+  data= read.table(file.choose(), header=T, sep=",")
+  
+  #Validation for dimensionality
+  if(ncol(data)>2){
+    return('Please enter data in 2 dimension only.');
+    }
+  
+  
+  #Calculate the range of dataset
+  min1 = min(data[,1])
+  max1 = max(data[,1])
+  min2 = min(data[,2])
+  max2 = max(data[,2])
+  
+  #calculating the random data points
+  
+  randX = runif(k,min1,max1)
+  randY = runif(k,min2,max2) 
+  
+  
+  #Matrix for centroid information
+  cenData <- data.frame(matrix(ncol = 2, nrow = k))
+  
+  for(m in 1:k)
+  {
+    cenData[m,1]= randX[m]
+    cenData[m,2]= randY[m]
+  }
+  
+  flag = TRUE
+  
+  #Matrix creation for storing cluster number in resultset
+  clusteredData <- data.frame(matrix(ncol = ncol(data)+1, nrow = nrow(data)))
+  
+  while(flag== TRUE){
+
+
+    #Making Initial matrix for centroid and data distance
+    for(i in 1: nrow(data))
+    {
+     clusterNum = 0
+     minimum = -1
+  
+     #Calculating the Euclidean Distance between centroid and data point
+  
+      for(j in 1: k)
+      {
+        d = sqrt((data[i,1]- cenData[j,1])^2 + (data[i,2]- cenData[j,2])^2)
+    
+       if(minimum < 0 || minimum > d)
+          {
+          minimum = d
+          clusterNum = j
+          }
+      }
+     
+     #Populating the result Matrix
+     clusteredData[i,1] = data[i,1]
+     clusteredData[i,2] = data[i,2]
+     clusteredData[i,3] = clusterNum
+    }
+
+#current centroid data is copied to another matrix
+  cenData1 = cenData
+  flag= FALSE;
+
+#Updating the centroid by taking mean of dataset
+  for(n in 1:k)
+    {
+      clus = subset(clusteredData,clusteredData[,3]  == n)
+  
+      if(nrow(clus)>0)
+      {
+         cenData[n,1]= mean(clus[,1],na.rm=TRUE)
+         cenData[n,2]= mean(clus[,2],na.rm=TRUE)
+      }
+  
+      if(cenData[n,1]!=cenData1[n,1] || cenData[n,2]!=cenData1[n,2])
+      {
+         flag = TRUE;
+      }
+    }  
+  }	
+
+return(clusteredData)
+}
+
+
+BKMeansImp<- function(n) 
+{
+  
+  result = KMeansImp(2)
+  currentNum=2;
+  while(currentNum < n)
+  {
+    clusterNumbers = unique(result[,ncol(result)])
+    clusterCentroidAndSSE = data.frame(matrix(ncol = ncol(result), nrow = length(clusterNumbers)))
+    nextClusterNum = -1
+    maxSSE= -1
+    for(x in 1: length(clusterNumbers))
+    {
+
+      evalCluster= subset(result,result[,ncol(result)]  == clusterNumbers[x])
+      
+      
+      for(dimension in 1:(ncol(result)-1))
+      {
+        clusterCentroidAndSSE[clusterNumbers[x],dimension]= mean(evalCluster[,dimension], trim=0,na.rm=FALSE)
+      }
+      
+      for(memberNum in 1:nrow(evalCluster))
+      {
+        
+        #delete this: clusterCentroidAndSSE[x,ncol(result)]= mean(evalCluster[,dimension], trim=0,na.rm=FALSE)
+        
+        clusterCentroidAndSSE[clusterNumbers[x],ncol(result)]=0
+        
+        for(dimension in 1:(ncol(result)-1))
+        {
+          clusterCentroidAndSSE[clusterNumbers[x],ncol(result)]= clusterCentroidAndSSE[clusterNumbers[x],ncol(result)] + (evalCluster[memberNum,dimension]-clusterCentroidAndSSE[clusterNumbers[x],dimension])^2
+        }
+        
+      }
+      
+      print("Cluster")
+      print(clusterNumbers[x])
+      print("Centroid SSE")
+      print(clusterCentroidAndSSE[clusterNumbers[x],])
+      
+      #root logic for SSE can be implemented here
+      if(maxSSE < 0 || maxSSE < clusterCentroidAndSSE[clusterNumbers[x],ncol(result)])
+      {
+        maxSSE = clusterCentroidAndSSE[clusterNumbers[x],ncol(result)]
+        nextClusterNum = clusterNumbers[x]
+      }
+      
+    }
+    
+    if(nextClusterNum > 0)
+    {
+      
+      subsetcluster=subset(result,result[,ncol(result)]  == nextClusterNum, select=1:(ncol(result)-1))
+      
+      splitResult = myKMeans(subsetcluster, k=2)
+      #splitResult = myKMeans(subset(result,result[,ncol(result)]  == nextClusterNum, select=1:(ncol(result)-1)), k=2)
+      nrow(splitResult)
+      otherCluster = subset(splitResult,splitResult[,ncol(result)]  == 2)
+      otherClusterNum = max(clusterNumbers)+1
+      print("Splitting")
+      print(nextClusterNum)
+      print("containing")
+      print(nrow(subsetcluster))
+      print("forming new cluster")
+      print(otherClusterNum)
+      print("containing")
+      print(nrow(otherCluster))
+      
+      for(resRow in 1: nrow(otherCluster))
+      {
+        for(datarow in 1: nrow(result))
+        {
+          isMatch = TRUE
+          for(dims in 1: (ncol(result)-1))
+          {
+            if(result[datarow,dims]!=otherCluster[resRow,dims])
+            {
+              isMatch=FALSE
+            }
+          }
+          
+          if(isMatch)
+          {
+            
+            result[datarow,ncol(result)] = otherClusterNum
+            
+          }
+        }
+        
+      }			
+    }
+    currentNum = currentNum + 1
+    print("for CurrentNum")
+    print(currentNum)
+    print(clusterCentroidAndSSE)
+  }
+  
+  return(result)
+}
